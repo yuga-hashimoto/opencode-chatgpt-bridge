@@ -75,7 +75,7 @@ async function listenWithFallback(app: ReturnType<typeof createMcpExpressApp>, c
 
 export async function startHttpServer(runtime: BridgeRuntime): Promise<Server> {
   const { config } = runtime;
-  const app = createMcpExpressApp();
+  const app = createMcpExpressApp({ host: config.host, allowedHosts: config.allowedHosts });
 
   app.get("/health", (_req, res) => {
     res.json({

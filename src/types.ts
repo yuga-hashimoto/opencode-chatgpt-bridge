@@ -4,7 +4,8 @@ export type BridgeConfig = {
   host: string;
   port: number;
  autoPort: boolean;
-  allowedRoots: string[];
+ allowedHosts: string[];
+ allowedRoots: string[];
   bridgeToken?: string;
   opencodeBaseUrl?: string;
   opencodeBin: string;

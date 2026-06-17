@@ -56,6 +56,12 @@ function pickNumber(args: CliArgs, key: string, envKey: string, fallback: number
   return parsed;
 }
 
+function parseList(value: string | undefined, fallback: string[]): string[] {
+ const raw = value?.trim();
+ const items = raw ? raw.split(",") : fallback;
+ return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
+}
+
 function parseAllowedRoots(value?: string): string[] {
   const raw = value?.trim();
   const roots = raw ? raw.split(":") : [process.cwd()];
@@ -72,6 +78,7 @@ export function loadConfig(argv = process.argv.slice(2)): BridgeConfig {
     host: pick(args, "host", "OPENCODE_BRIDGE_HOST", "127.0.0.1") ?? "127.0.0.1",
     port: pickNumber(args, "port", "OPENCODE_BRIDGE_PORT", 8787),
     autoPort: pickBoolean(args, "auto-port", "OPENCODE_BRIDGE_AUTO_PORT", true),
+ allowedHosts: parseList(pick(args, "allowed-hosts", "OPENCODE_BRIDGE_ALLOWED_HOSTS"), ["127.0.0.1", "localhost", "hashimotoyugamac-mini.tailf9f6e3.ts.net"]),
     allowedRoots,
     bridgeToken: pick(args, "token", "OPENCODE_BRIDGE_TOKEN"),
     opencodeBaseUrl: pick(args, "opencode-url", "OPENCODE_BASE_URL"),
