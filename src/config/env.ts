@@ -39,6 +39,14 @@ function pick(args: CliArgs, key: string, envKey: string, fallback?: string): st
   return fallback;
 }
 
+function pickBoolean(args: CliArgs, key: string, envKey: string, fallback: boolean): boolean {
+  const arg = args[key];
+  if (typeof arg === "boolean") return arg;
+  const value = typeof arg === "string" ? arg : process.env[envKey];
+  if (!value) return fallback;
+  return !["0", "false", "no", "off"].includes(value.toLowerCase());
+}
+
 function pickNumber(args: CliArgs, key: string, envKey: string, fallback: number): number {
   const value = pick(args, key, envKey, String(fallback));
   const parsed = Number.parseInt(value ?? "", 10);
@@ -63,6 +71,7 @@ export function loadConfig(argv = process.argv.slice(2)): BridgeConfig {
   return {
     host: pick(args, "host", "OPENCODE_BRIDGE_HOST", "127.0.0.1") ?? "127.0.0.1",
     port: pickNumber(args, "port", "OPENCODE_BRIDGE_PORT", 8787),
+    autoPort: pickBoolean(args, "auto-port", "OPENCODE_BRIDGE_AUTO_PORT", true),
     allowedRoots,
     bridgeToken: pick(args, "token", "OPENCODE_BRIDGE_TOKEN"),
     opencodeBaseUrl: pick(args, "opencode-url", "OPENCODE_BASE_URL"),

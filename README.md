@@ -23,12 +23,13 @@ pnpm run init -- --allowed-roots /Volumes/MOVESPEED/Documents/GitHub
 pnpm start
 ```
 
-`init` creates a ready-to-use `.env` with a random bridge token, your allowed repo roots, and Cloudflare quick tunnel enabled by default.
+`init` creates a ready-to-use `.env` with a random bridge token, your allowed repo roots, automatic port fallback, and Cloudflare quick tunnel enabled by default.
 
 When the bridge starts, it prints a setup guide with:
 
 - local health URL
 - local MCP URL
+- automatic fallback port when the preferred port is already in use
 - public HTTPS MCP URL when tunnel is enabled
 - ChatGPT settings link
 - connector name, description, and URL to paste

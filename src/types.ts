@@ -3,6 +3,7 @@ export type JsonValue = null | boolean | number | string | JsonValue[] | { [key:
 export type BridgeConfig = {
   host: string;
   port: number;
+ autoPort: boolean;
   allowedRoots: string[];
   bridgeToken?: string;
   opencodeBaseUrl?: string;

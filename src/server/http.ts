@@ -42,6 +42,37 @@ function authMiddleware(config: BridgeConfig) {
   };
 }
 
+async function listenWithFallback(app: ReturnType<typeof createMcpExpressApp>, config: BridgeConfig): Promise<Server> {
+  const preferredPort = config.port;
+  const attempts = config.autoPort ? 50 : 1;
+  for (let offset = 0; offset < attempts; offset += 1) {
+    const port = preferredPort + offset;
+    try {
+      const server = app.listen(port, config.host);
+      await new Promise<void>((resolve, reject) => {
+        server.once("listening", () => resolve());
+        server.once("error", reject);
+      });
+      if (port !== preferredPort) {
+        console.warn(`Preferred port ${preferredPort} is in use. Falling back to ${port}.`);
+      }
+      config.port = port;
+      return server;
+    } catch (error) {
+      const code = typeof error === "object" && error && "code" in error ? (error as { code?: string }).code : undefined;
+      if (code === "EADDRINUSE" && offset < attempts - 1) continue;
+      if (code === "EADDRINUSE") {
+        throw new Error(
+          `Port ${preferredPort} is already in use on ${config.host}. ` +
+            "Run with --port <free-port>, set OPENCODE_BRIDGE_PORT, or keep OPENCODE_BRIDGE_AUTO_PORT=true."
+        );
+      }
+      throw error;
+    }
+  }
+  throw new Error(`No available port found starting at ${preferredPort}`);
+}
+
 export async function startHttpServer(runtime: BridgeRuntime): Promise<Server> {
   const { config } = runtime;
   const app = createMcpExpressApp();
@@ -133,11 +164,7 @@ export async function startHttpServer(runtime: BridgeRuntime): Promise<Server> {
   app.get("/mcp", guard, mcpGetHandler);
   app.delete("/mcp", guard, mcpDeleteHandler);
 
-  const httpServer = app.listen(config.port, config.host);
-  await new Promise<void>((resolve, reject) => {
-    httpServer.once("listening", () => resolve());
-    httpServer.once("error", reject);
-  });
+  const httpServer = await listenWithFallback(app, config);
 
   const shutdown = async () => {
     await runtime.processManager.stop().catch(() => undefined);
