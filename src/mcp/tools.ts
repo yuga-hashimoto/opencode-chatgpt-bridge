@@ -345,5 +345,16 @@ export function createBridgeMcpServer(ctx: RegisterContext): McpServer {
       })
   );
 
-  return server;
+  // ChatGPT Connector creation can be stricter than raw MCP clients.
+ // The current MCP SDK adds experimental task execution metadata to every
+ // registerTool() descriptor. We do not use task-augmented execution, so omit
+ // it from tools/list for maximum Apps SDK compatibility.
+ const registeredTools = (server as unknown as { _registeredTools?: Record<string, { execution?: unknown }> })._registeredTools;
+ if (registeredTools) {
+ for (const tool of Object.values(registeredTools)) {
+ tool.execution = undefined;
+ }
+ }
+
+ return server;
 }
