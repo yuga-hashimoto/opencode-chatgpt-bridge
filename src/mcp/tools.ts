@@ -318,8 +318,8 @@ export function createBridgeMcpServer(ctx: RegisterContext): McpServer {
   server.registerTool(
     "opencode_capabilities",
     {
-      title: "List opencode agents and commands",
-      description: "List agents and slash commands available in opencode for a bridge session.",
+      title: "List opencode capabilities",
+      description: "List agents, slash commands, and provider/model configuration available in opencode for a bridge session.",
       inputSchema: { bridgeSessionId: z.string().min(1) },
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
@@ -328,7 +328,20 @@ export function createBridgeMcpServer(ctx: RegisterContext): McpServer {
         const bridge = await ctx.state.getSession(bridgeSessionId);
         const managed = await ctx.processManager.ensure(bridge.repoPath);
         const client = ctx.processManager.clientFor(managed);
-        return { agents: json(await client.listAgents()), commands: json(await client.listCommands()) };
+        const [agents, commands, providers, providerAuth, configProviders] = await Promise.all([
+          client.listAgents(),
+          client.listCommands(),
+          client.listProviders(),
+          client.getProviderAuthMethods(),
+          client.getConfigProviders()
+        ]);
+        return {
+          agents: json(agents),
+          commands: json(commands),
+          providers: json(providers),
+          providerAuth: json(providerAuth),
+          configProviders: json(configProviders)
+        };
       })
   );
 

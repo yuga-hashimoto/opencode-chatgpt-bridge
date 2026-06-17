@@ -1,0 +1,8 @@
+src
+tests
+coverage
+.env
+.env.*
+!.env.example
+.tmp-*
+*.log

@@ -158,6 +158,18 @@ export class OpencodeClient {
     return await this.request<unknown[]>("/command");
   }
 
+  async listProviders(): Promise<unknown> {
+    return await this.request<unknown>("/provider");
+  }
+
+  async getProviderAuthMethods(): Promise<unknown> {
+    return await this.request<unknown>("/provider/auth");
+  }
+
+  async getConfigProviders(): Promise<unknown> {
+    return await this.request<unknown>("/config/providers");
+  }
+
   private messageBody(input: SendMessageInput): Record<string, unknown> {
     const model = input.providerID || input.modelID ? { providerID: input.providerID, modelID: input.modelID } : undefined;
     return {

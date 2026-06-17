@@ -28,4 +28,23 @@ describe("OpencodeClient", () => {
     await client.sendMessage({ sessionId: "abc", text: "hello", async: true });
     expect(calls[0]).toBe("http://localhost:4096/session/abc/prompt_async");
   });
+
+  it("can request provider and model configuration", async () => {
+    const calls: string[] = [];
+    const fetchImpl: typeof fetch = async (url) => {
+      calls.push(String(url));
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } });
+    };
+
+    const client = new OpencodeClient({ baseUrl: "http://localhost:4096", fetchImpl });
+    await client.listProviders();
+    await client.getProviderAuthMethods();
+    await client.getConfigProviders();
+
+    expect(calls).toEqual([
+      "http://localhost:4096/provider",
+      "http://localhost:4096/provider/auth",
+      "http://localhost:4096/config/providers"
+    ]);
+  });
 });

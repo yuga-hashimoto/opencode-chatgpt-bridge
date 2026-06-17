@@ -1,32 +1,90 @@
 #!/usr/bin/env node
 import process from "node:process";
-import { loadConfig, maskToken } from "./config/env.js";
+import { loadConfig } from "./config/env.js";
+import { initEnv } from "./config/bootstrap.js";
 import { createRuntime, startHttpServer } from "./server/http.js";
+import { checkOpencodeCli } from "./opencode/setup.js";
+import { getSetupGuide } from "./setupGuide.js";
 import { startCloudflareTunnel } from "./tunnel/cloudflare.js";
 
+function hasFlag(flag: string): boolean {
+  return process.argv.slice(2).includes(flag);
+}
+
+function getArgValue(name: string): string | undefined {
+  const argv = process.argv.slice(2);
+  for (let i = 0; i < argv.length; i += 1) {
+    const item = argv[i];
+    if (item === name) return argv[i + 1];
+    if (item?.startsWith(`${name}=`)) return item.slice(name.length + 1);
+  }
+  return undefined;
+}
+
+function printHelp(): void {
+  console.log(`opencode-chatgpt-bridge
+
+Usage:
+  opencode-chatgpt-bridge init [--allowed-roots <path:path>]
+  opencode-chatgpt-bridge start [options]
+  opencode-chatgpt-bridge doctor [options]
+
+Common options:
+  --host <host>                  Bridge host, default 127.0.0.1
+  --port <port>                  Bridge port, default 8787
+  --allowed-roots <path:path>    Colon-separated repo roots ChatGPT may access
+  --token <token>                Bearer token for /mcp
+  --tunnel cloudflare            Start Cloudflare quick tunnel
+  --opencode-bin <bin>           opencode binary, default opencode
+
+Recommended first run:
+  opencode-chatgpt-bridge init --allowed-roots /Volumes/MOVESPEED/Documents/GitHub
+  opencode-chatgpt-bridge start
+`);
+}
+
 async function main(): Promise<void> {
-  const config = loadConfig();
+  const command = process.argv[2]?.startsWith("--") ? "start" : process.argv[2] ?? "start";
+
+  if (command === "help" || hasFlag("--help") || hasFlag("-h")) {
+    printHelp();
+    return;
+  }
+
+  if (command === "init") {
+    const roots = getArgValue("--allowed-roots")?.split(":").filter(Boolean);
+    const result = await initEnv({ allowedRoots: roots, force: hasFlag("--force") });
+    if (result.created) {
+      console.log(`Created ${result.path}`);
+      console.log("Next: run `pnpm run build && pnpm start` or `opencode-chatgpt-bridge start`.");
+    } else {
+      console.log(`${result.path} already exists. Use --force to overwrite.`);
+    }
+    return;
+  }
+
+  const config = loadConfig(command === "start" || command === "doctor" ? process.argv.slice(3) : process.argv.slice(2));
+  const opencodeStatus = await checkOpencodeCli(config);
+
+  if (command === "doctor") {
+    console.log(getSetupGuide({ config, localUrl: `http://${config.host}:${config.port}`, opencodeStatus }));
+    return;
+  }
+
   const runtime = createRuntime(config);
   await startHttpServer(runtime);
 
   const localUrl = `http://${config.host}:${config.port}`;
-  console.log(`opencode-chatgpt-bridge listening at ${localUrl}`);
-  console.log(`MCP endpoint: ${localUrl}/mcp`);
-  console.log(`Allowed roots: ${config.allowedRoots.join(", ")}`);
-  if (config.bridgeToken) {
-    console.log(`Bridge token: ${maskToken(config.bridgeToken)} (send Authorization: Bearer <token>)`);
-  } else {
-    console.warn("WARNING: OPENCODE_BRIDGE_TOKEN is not set. Do not expose this server publicly without a tunnel/auth layer.");
-  }
+  let publicUrl: string | undefined;
 
   if (config.tunnel === "cloudflare") {
     console.log("Starting Cloudflare quick tunnel...");
     const tunnel = startCloudflareTunnel(config.cloudflaredBin, localUrl);
-    const publicUrl = await tunnel.url;
-    console.log(`Public MCP endpoint: ${publicUrl}/mcp`);
-    console.log("Use this URL as the ChatGPT connector URL.");
+    publicUrl = await tunnel.url;
     process.once("exit", () => tunnel.process.kill("SIGTERM"));
   }
+
+  console.log(getSetupGuide({ config, localUrl, publicUrl, opencodeStatus }));
 }
 
 main().catch((error) => {

@@ -15,7 +15,9 @@
   "scripts": {
     "dev": "tsx src/cli.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/cli.js",
+    "start": "node dist/cli.js start",
+    "init": "node dist/cli.js init",
+    "doctor": "node dist/cli.js doctor",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "validate": "pnpm run typecheck && pnpm test && pnpm run build"

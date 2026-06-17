@@ -4,7 +4,7 @@ import process from "node:process";
 import dotenv from "dotenv";
 import type { BridgeConfig } from "../types.js";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 type CliArgs = Record<string, string | boolean>;
 
