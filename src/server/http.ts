@@ -34,7 +34,8 @@ function authMiddleware(config: BridgeConfig) {
     const header = req.header("authorization") ?? "";
     const bearer = header.match(/^Bearer\s+(.+)$/i)?.[1];
     const queryToken = typeof req.query.token === "string" ? req.query.token : undefined;
-    if (bearer === config.bridgeToken || queryToken === config.bridgeToken) {
+ const pathToken = typeof req.params.token === "string" ? req.params.token : undefined;
+    if (bearer === config.bridgeToken || queryToken === config.bridgeToken || pathToken === config.bridgeToken) {
       next();
       return;
     }
@@ -163,6 +164,9 @@ export async function startHttpServer(runtime: BridgeRuntime): Promise<Server> {
   app.post("/mcp", guard, mcpPostHandler);
   app.get("/mcp", guard, mcpGetHandler);
   app.delete("/mcp", guard, mcpDeleteHandler);
+ app.post("/mcp/:token", guard, mcpPostHandler);
+ app.get("/mcp/:token", guard, mcpGetHandler);
+ app.delete("/mcp/:token", guard, mcpDeleteHandler);
 
   const httpServer = await listenWithFallback(app, config);
 

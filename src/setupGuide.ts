@@ -15,7 +15,12 @@ const CHATGPT_CONNECTORS_SETTINGS_URL = "https://chatgpt.com/#settings/Connector
 const OPENAI_CONNECT_DOCS_URL = "https://developers.openai.com/apps-sdk/deploy/connect-chatgpt";
 const OPENCODE_SERVER_DOCS_URL = "https://opencode.ai/docs/server/";
 
-function withToken(url: string, token?: string): string | undefined {
+function withTokenInPath(url: string, token?: string): string | undefined {
+  if (!token) return undefined;
+  return `${url}/${encodeURIComponent(token)}`;
+}
+
+function withTokenQuery(url: string, token?: string): string | undefined {
   if (!token) return undefined;
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}token=${encodeURIComponent(token)}`;
@@ -23,20 +28,21 @@ function withToken(url: string, token?: string): string | undefined {
 
 export function getSetupGuide({ config, localUrl, publicUrl, opencodeStatus }: SetupGuideInput): string {
   const connectorUrl = publicUrl ? `${publicUrl}/mcp` : `${localUrl}/mcp`;
-  const connectorUrlWithToken = withToken(connectorUrl, config.bridgeToken);
+  const connectorUrlWithPathToken = withTokenInPath(connectorUrl, config.bridgeToken);
+  const connectorUrlWithQueryToken = withTokenQuery(connectorUrl, config.bridgeToken);
   const accessMode = publicUrl
     ? "READY: use the public HTTPS MCP endpoint below in ChatGPT."
     : "LOCAL ONLY: ChatGPT needs an HTTPS URL. Start with OPENCODE_BRIDGE_TUNNEL=cloudflare or use ngrok/Tailscale Funnel.";
   const tokenLine = config.bridgeToken
-    ? `Bearer token: ${maskToken(config.bridgeToken)}\n   Header auth: Authorization: Bearer <your OPENCODE_BRIDGE_TOKEN>\n   URL auth fallback: ${connectorUrlWithToken}`
+    ? `Bearer token: ${maskToken(config.bridgeToken)}\n   Header auth: Authorization: Bearer <your OPENCODE_BRIDGE_TOKEN>\n   Path auth URL: ${connectorUrlWithPathToken}\n   Query auth fallback: ${connectorUrlWithQueryToken}`
     : "Bearer token: NOT SET\n   Set OPENCODE_BRIDGE_TOKEN before exposing this bridge outside localhost.";
   const opencodeLines = opencodeStatus ? getOpencodeSetupText(opencodeStatus, config) : [];
 
   return [
     "",
-    "╭────────────────────────────────────────────────────────────╮",
+    "╭──────────────────────────────────────────────────────────╮",
     "│ opencode-chatgpt-bridge setup                              │",
-    "╰────────────────────────────────────────────────────────────╯",
+    "╰───────────────────────────────────────────────────────────╯",
     "",
     accessMode,
     "",
@@ -55,7 +61,7 @@ export function getSetupGuide({ config, localUrl, publicUrl, opencodeStatus }: S
     "3) Create connector with these values",
     "   Connector name: opencode local bridge",
     "   Description: Control local opencode sessions, inspect diffs, and manage local coding tasks.",
-    `   Connector URL: ${connectorUrlWithToken ?? connectorUrl}`,
+    `   Connector URL: ${connectorUrlWithPathToken ?? connectorUrl}`,
     config.bridgeToken ? `   Plain MCP URL: ${connectorUrl}` : undefined,
     `   ${tokenLine}`,
     "",
