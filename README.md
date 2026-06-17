@@ -30,7 +30,7 @@ When the bridge starts, it prints a setup guide with:
 - local health URL
 - local MCP URL
 - automatic fallback port when the preferred port is already in use
-- public HTTPS MCP URL when tunnel is enabled; Tailscale defaults to port 8443 to avoid LocalAnt using 443
+- public HTTPS MCP URL when tunnel is enabled; Tailscale background service defaults to port 10000 to avoid LocalAnt using 443 and other active Funnel listeners
 - ChatGPT settings link
 - connector name, description, and URL to paste
 - header auth and URL-token fallback
@@ -68,6 +68,31 @@ pnpm run init -- --allowed-roots /path/to/repos
 pnpm start
 pnpm run doctor
 ```
+
+## Background mode on macOS
+
+You do not need to keep a terminal open. Install the bridge as a user LaunchAgent:
+
+```bash
+pnpm run build
+pnpm run install-service
+pnpm run service-status
+```
+
+Logs are written to:
+
+```text
+~/.opencode-chatgpt-bridge/bridge.log
+~/.opencode-chatgpt-bridge/bridge.err.log
+```
+
+To stop background mode:
+
+```bash
+pnpm run uninstall-service
+```
+
+The service uses this repository directory as its working directory, loads `.env`, starts the bridge, and keeps it alive after login.
 
 ## ChatGPT setup
 

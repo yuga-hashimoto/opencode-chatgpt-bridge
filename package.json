@@ -20,7 +20,10 @@
     "doctor": "node dist/cli.js doctor",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "validate": "pnpm run typecheck && pnpm test && pnpm run build"
+    "validate": "pnpm run typecheck && pnpm test && pnpm run build",
+    "install-service": "node dist/cli.js install-service",
+    "uninstall-service": "node dist/cli.js uninstall-service",
+    "service-status": "node dist/cli.js service-status"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
