@@ -15,7 +15,7 @@ describe("initEnv", () => {
     expect(result.created).toBe(true);
     expect(result.token.length).toBeGreaterThan(20);
     expect(content).toContain("OPENCODE_BRIDGE_TOKEN=");
-    expect(content).toContain("OPENCODE_BRIDGE_TUNNEL=cloudflare");
+    expect(content).toContain("OPENCODE_BRIDGE_TUNNEL=tailscale");
     expect(content).toContain(dir);
     expect(mode).toBe(0o600);
   });

@@ -66,7 +66,7 @@ export function loadConfig(argv = process.argv.slice(2)): BridgeConfig {
   const args = parseArgs(argv);
   const allowedRoots = parseAllowedRoots(pick(args, "allowed-roots", "OPENCODE_BRIDGE_ALLOWED_ROOTS"));
   const tunnelRaw = pick(args, "tunnel", "OPENCODE_BRIDGE_TUNNEL", "none")?.toLowerCase();
-  const tunnel = tunnelRaw === "cloudflare" ? "cloudflare" : "none";
+  const tunnel = tunnelRaw === "cloudflare" ? "cloudflare" : tunnelRaw === "tailscale" ? "tailscale" : "none";
 
   return {
     host: pick(args, "host", "OPENCODE_BRIDGE_HOST", "127.0.0.1") ?? "127.0.0.1",
@@ -82,7 +82,8 @@ export function loadConfig(argv = process.argv.slice(2)): BridgeConfig {
     opencodePassword: pick(args, "opencode-password", "OPENCODE_SERVER_PASSWORD"),
     stateDir: resolve(pick(args, "state-dir", "OPENCODE_BRIDGE_STATE_DIR", join(homedir(), ".opencode-chatgpt-bridge")) ?? join(homedir(), ".opencode-chatgpt-bridge")),
     tunnel,
-    cloudflaredBin: pick(args, "cloudflared-bin", "CLOUDFLARED_BIN", "cloudflared") ?? "cloudflared"
+    cloudflaredBin: pick(args, "cloudflared-bin", "CLOUDFLARED_BIN", "cloudflared") ?? "cloudflared",
+ tailscaleBin: pick(args, "tailscale-bin", "TAILSCALE_BIN", "/Applications/Tailscale.app/Contents/MacOS/Tailscale") ?? "tailscale"
   };
 }
 

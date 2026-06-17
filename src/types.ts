@@ -13,7 +13,8 @@ export type BridgeConfig = {
   opencodeUsername: string;
   opencodePassword?: string;
   stateDir: string;
-  tunnel: "none" | "cloudflare";
+  tunnel: "none" | "cloudflare" | "tailscale";
+ tailscaleBin: string;
   cloudflaredBin: string;
 };
 

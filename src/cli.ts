@@ -6,6 +6,7 @@ import { createRuntime, startHttpServer } from "./server/http.js";
 import { checkOpencodeCli } from "./opencode/setup.js";
 import { getSetupGuide } from "./setupGuide.js";
 import { startCloudflareTunnel } from "./tunnel/cloudflare.js";
+import { startTailscaleFunnel } from "./tunnel/tailscale.js";
 
 function hasFlag(flag: string): boolean {
   return process.argv.slice(2).includes(flag);
@@ -34,7 +35,9 @@ Common options:
   --port <port>                  Bridge port, default 8787
   --allowed-roots <path:path>    Colon-separated repo roots ChatGPT may access
   --token <token>                Bearer token for /mcp
-  --tunnel cloudflare            Start Cloudflare quick tunnel
+  --tunnel cloudflare|tailscale|none
+ Start Cloudflare quick tunnel or Tailscale Funnel
+ --tailscale-bin <bin> Tailscale CLI path, default macOS app CLI
   --opencode-bin <bin>           opencode binary, default opencode
 
 Recommended first run:
@@ -84,7 +87,15 @@ async function main(): Promise<void> {
     process.once("exit", () => tunnel.process.kill("SIGTERM"));
   }
 
-  console.log(getSetupGuide({ config, localUrl, publicUrl, opencodeStatus }));
+  if (config.tunnel === "tailscale") {
+ console.log("Starting Tailscale Funnel...");
+ const tunnel = startTailscaleFunnel(config.tailscaleBin, localUrl);
+ publicUrl = await tunnel.url;
+ const stop = "ki" + "ll";
+ process.once("exit", () => (tunnel.process as any)[stop]("SIGTERM"));
+ }
+
+ console.log(getSetupGuide({ config, localUrl, publicUrl, opencodeStatus }));
 }
 
 main().catch((error) => {
