@@ -72,12 +72,38 @@ export class OpencodeProcessManager {
     };
     child.stdout.on("data", capture("stdout"));
     child.stderr.on("data", capture("stderr"));
-    child.on("exit", () => {
-      const current = this.processes.get(repoPath);
-      if (current?.process === child) this.processes.delete(repoPath);
+
+    // A spawn failure (missing binary, not executable, bad PATH) surfaces as an
+    // 'error' event, not an 'exit' event, and Node throws it as an uncaught
+    // exception when nothing listens. Surface it as a normal startup failure
+    // instead, and report an early non-zero exit rather than waiting out the
+    // full health timeout.
+    const exitOrError = new Promise<Error>((resolve) => {
+      const fail = (message: string) => {
+        const current = this.processes.get(repoPath);
+        if (current?.process === child) this.processes.delete(repoPath);
+        resolve(new Error(message));
+      };
+      child.on("error", (error: Error) => {
+        fail(
+          `Failed to start the opencode server: ${this.config.opencodeBin} could not be executed (${error.message}). ` +
+          `Is opencode installed and on PATH?`
+        );
+      });
+      child.on("exit", (code, signal) => {
+        if (code !== 0) {
+          fail(
+            `The opencode server exited before becoming healthy (exit code ${code ?? "null"}, signal ${signal ?? "null"}). ` +
+            `Check the recent server logs.`
+          );
+        }
+      });
     });
 
-    await waitForHealth(() => this.isHealthy(managed), 20_000);
+    await Promise.race([
+      waitForHealth(() => this.isHealthy(managed), 20_000),
+      exitOrError.then(error => Promise.reject(error))
+    ]);
     return managed;
   }
 

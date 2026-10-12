@@ -20,7 +20,7 @@
     "doctor": "node dist/cli.js doctor",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "validate": "pnpm run typecheck && pnpm test && pnpm run build",
+    "validate": "npm run typecheck && npm test && npm run build",
     "install-service": "node dist/cli.js install-service",
     "uninstall-service": "node dist/cli.js uninstall-service",
     "service-status": "node dist/cli.js service-status"
@@ -29,10 +29,13 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "minimatch": "^10.2.6",
+    "yaml": "^2.9.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/minimatch": "^6.0.0",
     "@types/node": "^25.9.3",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
@@ -40,5 +43,6 @@
   },
   "engines": {
     "node": ">=20.0.0"
-  }
+  },
+  "packageManager": "pnpm@9.15.9"
 }

@@ -1,0 +1,86 @@
+# .ia-dev.yml - IA DEV 2.1 Project Profile
+# Place this file in the root of your project repository.
+# See https://github.com/your-org/ia-dev for full documentation.
+
+version: "2.1"
+
+# Profile type determines default behaviors and validations
+# Options: code-change | bugfix | refactor | test | docs | config
+profile: "code-change"
+
+# Human-readable goal description (used for context, PR titles, etc.)
+# Minimum 10 characters.
+goal: |
+  Implement user authentication with JWT tokens.
+  Includes login, register, and token refresh endpoints.
+
+# =============================================================================
+# PATH PERMISSIONS (4-list model)
+# =============================================================================
+# All paths use minimatch patterns relative to repository root.
+# Use ** for recursive, * for single segment, ? for single char.
+
+paths:
+  # Files OpenCode can READ for context (broad by default)
+  context_paths:
+    - "src/**/*"
+    - "tests/**/*"
+    - "package.json"
+    - "tsconfig.json"
+    - "docs/**/*"
+    - "README.md"
+
+  # Files OpenCode can MODIFY (explicit, narrow by default)
+  # Empty = no writes allowed
+  write_paths:
+    - "src/auth/**/*.ts"
+    - "src/routes/auth.ts"
+    - "tests/auth/**/*.test.ts"
+    - "docs/auth.md"
+
+  # Files that can NEVER be modified (even if in write_paths)
+  protected_paths:
+    - ".github/**"
+    - ".ia-dev.yml"
+    - "package-lock.json"
+    - "pnpm-lock.yaml"
+    - "**/*.lock"
+    - "src/types/**/*.d.ts"
+
+  # Files that can NEVER be read (secrets, keys, etc.)
+  sensitive_paths:
+    - "**/.env*"
+    - "**/*.pem"
+    - "**/*.key"
+    - "**/secrets/**"
+    - "**/credentials/**"
+    - "**/*.p12"
+
+# =============================================================================
+# MODEL CONFIGURATION
+# =============================================================================
+# Both models MUST be different. Both MUST be free ($0).
+# Use `opencode models` to see available models.
+
+models:
+  author: "mimo-v2.6-flash-free"      # Writes code
+  reviewer: "space-bunny-free"         # Reviews code (MUST be different)
+
+# =============================================================================
+# LIMITS & TIMEOUTS
+# =============================================================================
+
+limits:
+  max_context_tokens: 4000    # Context budget for Author model
+  max_attempts: 3             # Retries on verification failure
+  timeout_ms: 300000          # 5 minutes per attempt
+
+# =============================================================================
+# PROJECT COMMANDS (optional, used by verification)
+# =============================================================================
+
+commands:
+  build: "pnpm run build"
+  test: "pnpm test"
+  lint: "pnpm run lint"
+  acceptance: "pnpm run test:acceptance"
