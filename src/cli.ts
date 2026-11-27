@@ -109,6 +109,9 @@ async function main(): Promise<void> {
   }
 
   const config = loadConfig(command === "start" || command === "doctor" ? process.argv.slice(3) : process.argv.slice(2));
+  if (command === "start" && config.tunnel !== "none" && !config.bridgeToken) {
+    throw new Error("OPENCODE_BRIDGE_TOKEN is required before exposing the bridge through a public tunnel.");
+  }
   const opencodeStatus = await checkOpencodeCli(config);
 
   if (command === "doctor") {

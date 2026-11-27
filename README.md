@@ -207,7 +207,7 @@ Default protections:
 
 Strongly recommended:
 
-- Always set `OPENCODE_BRIDGE_TOKEN` before exposing through any tunnel.
+- Public tunnels and the Tailscale background service require `OPENCODE_BRIDGE_TOKEN`.
 - Do not bind the bridge to `0.0.0.0` unless you know exactly what network can reach it.
 - Keep `OPENCODE_BRIDGE_ALLOWED_ROOTS` narrow.
 - Review `opencode_get_diff` before committing or pushing generated changes.

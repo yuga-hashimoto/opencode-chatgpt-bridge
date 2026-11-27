@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -41,6 +41,10 @@ export function getServicePaths(): { plistPath: string; stdoutPath: string; stde
 }
 
 export async function installService(options: InstallServiceOptions): Promise<ServiceStatus> {
+  if (!options.bridgeToken) {
+    throw new Error("OPENCODE_BRIDGE_TOKEN is required before exposing the bridge through Tailscale Funnel.");
+  }
+
   const paths = getServicePaths();
   const repoDir = resolve(options.repoDir);
   await mkdir(dirname(paths.plistPath), { recursive: true });
@@ -52,9 +56,11 @@ export async function installService(options: InstallServiceOptions): Promise<Se
     nodeBin: options.nodeBin,
     stdoutPath: paths.stdoutPath,
     stderrPath: paths.stderrPath,
-    servicePort: SERVICE_PORT
+    servicePort: SERVICE_PORT,
+    bridgeToken: options.bridgeToken
   });
-  await writeFile(paths.plistPath, plist, "utf8");
+  await writeFile(paths.plistPath, plist, { encoding: "utf8", mode: 0o600 });
+  await chmod(paths.plistPath, 0o600);
 
   await configureTailscaleFunnel(options.tailscaleBin, SERVICE_PORT);
   await unloadService().catch(() => undefined);
@@ -116,8 +122,19 @@ function xmlEscape(value: string): string {
     .replaceAll("\"", "&quot;");
 }
 
-function buildPlist(input: { label: string; repoDir: string; nodeBin: string; stdoutPath: string; stderrPath: string; servicePort: number }): string {
+export function buildPlist(input: {
+  label: string;
+  repoDir: string;
+  nodeBin: string;
+  stdoutPath: string;
+  stderrPath: string;
+  servicePort: number;
+  bridgeToken?: string;
+}): string {
   const cliPath = join(input.repoDir, "dist", "cli.js");
+  const tokenEnvironment = input.bridgeToken
+    ? `    <key>OPENCODE_BRIDGE_TOKEN</key>\n    <string>${xmlEscape(input.bridgeToken)}</string>\n`
+    : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -150,6 +167,7 @@ function buildPlist(input: { label: string; repoDir: string; nodeBin: string; st
   <dict>
     <key>PATH</key>
     <string>${xmlEscape(process.env.PATH ?? "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin")}</string>
+${tokenEnvironment.trimEnd()}
   </dict>
 </dict>
 </plist>
