@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { BridgeSession } from "../types.js";
@@ -9,6 +9,7 @@ type StateFile = {
 
 export class StateStore {
   private readonly file: string;
+  private mutationQueue: Promise<void> = Promise.resolve();
 
   constructor(private readonly stateDir: string) {
     this.file = join(stateDir, "sessions.json");
@@ -26,10 +27,12 @@ export class StateStore {
       createdAt: now,
       updatedAt: now
     };
-    const state = await this.read();
-    state.sessions.push(session);
-    await this.write(state);
-    return session;
+    return await this.serializeMutations(async () => {
+      const state = await this.read();
+      state.sessions.push(session);
+      await this.write(state);
+      return session;
+    });
   }
 
   async getSession(bridgeSessionId: string): Promise<BridgeSession> {
@@ -39,23 +42,25 @@ export class StateStore {
   }
 
   async updateSession(bridgeSessionId: string, patch: Partial<Omit<BridgeSession, "bridgeSessionId" | "createdAt">>): Promise<BridgeSession> {
-    const state = await this.read();
-    const index = state.sessions.findIndex((item) => item.bridgeSessionId === bridgeSessionId);
-    if (index < 0) throw new Error(`Unknown bridge session: ${bridgeSessionId}`);
-    const existing = state.sessions[index];
-    if (!existing) throw new Error(`Unknown bridge session: ${bridgeSessionId}`);
-    const updated: BridgeSession = {
-      bridgeSessionId: existing.bridgeSessionId,
-      createdAt: existing.createdAt,
-      opencodeSessionId: patch.opencodeSessionId ?? existing.opencodeSessionId,
-      repoPath: patch.repoPath ?? existing.repoPath,
-      baseUrl: patch.baseUrl ?? existing.baseUrl,
-      title: patch.title ?? existing.title,
-      updatedAt: new Date().toISOString()
-    };
-    state.sessions[index] = updated;
-    await this.write(state);
-    return updated;
+    return await this.serializeMutations(async () => {
+      const state = await this.read();
+      const index = state.sessions.findIndex((item) => item.bridgeSessionId === bridgeSessionId);
+      if (index < 0) throw new Error(`Unknown bridge session: ${bridgeSessionId}`);
+      const existing = state.sessions[index];
+      if (!existing) throw new Error(`Unknown bridge session: ${bridgeSessionId}`);
+      const updated: BridgeSession = {
+        bridgeSessionId: existing.bridgeSessionId,
+        createdAt: existing.createdAt,
+        opencodeSessionId: patch.opencodeSessionId ?? existing.opencodeSessionId,
+        repoPath: patch.repoPath ?? existing.repoPath,
+        baseUrl: patch.baseUrl ?? existing.baseUrl,
+        title: patch.title ?? existing.title,
+        updatedAt: new Date().toISOString()
+      };
+      state.sessions[index] = updated;
+      await this.write(state);
+      return updated;
+    });
   }
 
   private async read(): Promise<StateFile> {
@@ -73,6 +78,22 @@ export class StateStore {
 
   private async write(state: StateFile): Promise<void> {
     await mkdir(this.stateDir, { recursive: true });
-    await writeFile(this.file, JSON.stringify(state, null, 2) + "\n", "utf8");
+    const temporaryFile = `${this.file}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporaryFile, JSON.stringify(state, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
+      await rename(temporaryFile, this.file);
+    } catch (error) {
+      await unlink(temporaryFile).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private async serializeMutations<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.mutationQueue.then(operation);
+    this.mutationQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+    return await result;
   }
 }

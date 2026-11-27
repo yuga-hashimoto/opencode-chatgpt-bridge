@@ -19,6 +19,10 @@ export async function checkOpencodeCli(config: BridgeConfig): Promise<OpencodeCl
     ]);
     const version = versionResult.status === "fulfilled" ? versionResult.value.stdout.trim() || versionResult.value.stderr.trim() : undefined;
     const path = pathResult.status === "fulfilled" ? pathResult.value.stdout.trim() : undefined;
+    if (versionResult.status === "rejected") {
+      const error = versionResult.reason instanceof Error ? versionResult.reason.message : String(versionResult.reason);
+      return { installed: false, path, error };
+    }
     return { installed: true, version, path };
   } catch (error) {
     return {

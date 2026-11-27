@@ -23,6 +23,7 @@ type LogLine = {
 export class OpencodeProcessManager {
   private readonly processes = new Map<string, ManagedOpencode>();
   private readonly logs = new Map<string, LogLine[]>();
+  private readonly starting = new Map<string, Promise<ManagedOpencode>>();
 
   constructor(private readonly config: BridgeConfig) {}
 
@@ -37,9 +38,29 @@ export class OpencodeProcessManager {
       };
     }
 
+    const pending = this.starting.get(repoPath);
+    if (pending) return await pending;
+
     const existing = this.processes.get(repoPath);
     if (existing && (await this.isHealthy(existing))) return existing;
+    if (existing) {
+      existing.process?.kill("SIGTERM");
+      if (this.processes.get(repoPath) === existing) this.processes.delete(repoPath);
+    }
 
+    const concurrentStart = this.starting.get(repoPath);
+    if (concurrentStart) return await concurrentStart;
+
+    const start = this.startManaged(repoPath);
+    this.starting.set(repoPath, start);
+    try {
+      return await start;
+    } finally {
+      if (this.starting.get(repoPath) === start) this.starting.delete(repoPath);
+    }
+  }
+
+  private async startManaged(repoPath: string): Promise<ManagedOpencode> {
     const port = await findOpenPort(this.config.opencodePortStart);
     const password = this.config.opencodePassword ?? randomBytes(24).toString("hex");
     const baseUrl = `http://${this.config.opencodeHost}:${port}`;
@@ -64,6 +85,7 @@ export class OpencodeProcessManager {
     };
     this.processes.set(repoPath, managed);
     this.logs.set(repoPath, []);
+    let startupError: Error | undefined;
 
     const capture = (stream: "stdout" | "stderr") => (chunk: Buffer) => {
       const entries = this.logs.get(repoPath) ?? [];
@@ -72,13 +94,33 @@ export class OpencodeProcessManager {
     };
     child.stdout.on("data", capture("stdout"));
     child.stderr.on("data", capture("stderr"));
-    child.on("exit", () => {
+    child.on("error", (error) => {
+      startupError = error;
+    });
+    let startupCompleted = false;
+    child.on("exit", (code, signal) => {
+      if (!startupCompleted) {
+        startupError = new Error(
+          `opencode exited before becoming healthy (code ${code ?? "unknown"}${signal ? `, signal ${signal}` : ""})`
+        );
+      }
       const current = this.processes.get(repoPath);
       if (current?.process === child) this.processes.delete(repoPath);
     });
 
-    await waitForHealth(() => this.isHealthy(managed), 20_000);
-    return managed;
+    try {
+      await waitForHealth(() => {
+        if (startupError) throw startupError;
+        return this.isHealthy(managed);
+      }, 20_000);
+      if (startupError) throw startupError;
+      startupCompleted = true;
+      return managed;
+    } catch (error) {
+      if (this.processes.get(repoPath)?.process === child) this.processes.delete(repoPath);
+      if (!child.killed && child.exitCode === null) child.kill("SIGTERM");
+      throw error;
+    }
   }
 
   clientFor(managed: ManagedOpencode): OpencodeClient {

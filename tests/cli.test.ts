@@ -11,4 +11,16 @@ describe("CLI", () => {
     expect(result.stdout).toContain("opencode-chatgpt-bridge init");
     expect(result.stdout).toContain("opencode-chatgpt-bridge doctor");
   });
+
+  it("refuses to start a public tunnel without a bridge token", async () => {
+    const result = await execFileAsync("pnpm", [...cli, "start", "--tunnel", "cloudflare"], {
+      timeout: 10000,
+      env: { ...process.env, OPENCODE_BRIDGE_TOKEN: "" }
+    }).then(
+      () => undefined,
+      (error: Error & { stderr?: string }) => error
+    );
+
+    expect(result?.stderr).toContain("OPENCODE_BRIDGE_TOKEN is required");
+  });
 });
